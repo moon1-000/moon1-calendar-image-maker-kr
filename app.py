@@ -113,3 +113,84 @@ with st.sidebar:
     st.info("1️⃣ **화면 비율 설정**")
     cat = st.selectbox("기기 분류", ["스마트폰 (1080x2340)", "태블릿 (2048x2732)", "이북 리더기 (758x1024)", "직접 입력"], index=2, key=f"cat{suffix}")
     res = {"스마트폰 (1080x2340)": (1080, 2340), "태블릿 (2048x2732)": (2048, 2732), "이북 리더기 (758x1024)": (758, 1024)}
+    
+    if cat == "직접 입력":
+        w = st.number_input("가로", value=1080, key=f"w{suffix}")
+        h = st.number_input("세로", value=1920, key=f"h{suffix}")
+    else:
+        w, h = res[cat]
+    
+    st.markdown("---")
+    st.info("2️⃣ **달력 시기 및 위치**")
+    c1, c2 = st.columns(2)
+    year = c1.number_input("년", value=2026, key=f"year{suffix}")
+    month = c2.number_input("월", 1, 12, 3, key=f"month{suffix}")
+    is_landscape = st.checkbox("가로로 돌리기", value=False, key=f"land{suffix}")
+    if is_landscape: w, h = h, w
+    use_holidays = st.checkbox("대한민국 공휴일 반영", value=True, key=f"hol{suffix}")
+    pos_val = st.slider("세로 위치 (%)", 0, 100, 50, key=f"pos{suffix}")
+    
+    st.markdown("---")
+    st.info("3️⃣ **배경 설정**")
+    bg_type = st.radio("배경 종류", ["단색 컬러", "이미지 업로드"], horizontal=True, key=f"bg_t{suffix}")
+    
+    bg_rotate, bg_x, bg_y, bg_zoom, bg_img, bg_color = 0, 0, 0, 1.0, None, "#FFFFFF"
+    
+    if bg_type == "이미지 업로드":
+        bg_img = st.file_uploader("이미지 파일 선택", type=['jpg', 'png', 'jpeg'], key=f"bg_img{suffix}")
+        st.write("🖼️ **이미지 조작**")
+        bg_rotate = st.slider("이미지 회전 (도)", 0, 360, 0, 1, key=f"bg_r{suffix}")
+        bg_zoom = st.slider("이미지 확대 (Zoom)", 1.0, 3.0, 1.0, 0.1, key=f"bg_z{suffix}")
+        bg_x = st.slider("이미지 가로 이동 (%)", -100, 100, 0, key=f"bg_x{suffix}")
+        bg_y = st.slider("이미지 세로 이동 (%)", -100, 100, 0, key=f"bg_y{suffix}")
+        bg_color = st.color_picker("이미지 외곽 배경색", "#FFFFFF", key=f"bg_c_img{suffix}")
+    else:
+        bg_color = st.color_picker("배경색 선택", "#FFFFFF", key=f"bg_c_plain{suffix}")
+    
+    show_box = st.checkbox("가독성 박스 추가(이미지 배경 시)", value=False, key=f"s_box{suffix}")
+    if show_box:
+        bx_c = st.color_picker("바탕 박스 색상", "#FFFFFF", key=f"bx_c{suffix}")
+        bx_o = st.slider("바탕 투명도", 0, 100, 75, key=f"bx_o{suffix}")
+        bx_r = st.slider("바탕 모서리 곡률", 0, 100, 20, key=f"bx_r{suffix}")
+    else: bx_c, bx_o, bx_r = "#FFFFFF", 75, 20
+    
+    st.markdown("---")
+    st.info("4️⃣ **텍스트 설정**")
+    lang = st.radio("언어", ["English", "한국어"], horizontal=True, key=f"lang{suffix}")
+    font_f = st.selectbox("서체", ["Arial", "맑은 고딕", "바탕체", "나눔고딕"], index=0, key=f"font{suffix}")
+    is_bold = st.checkbox("볼드체 설정", value=False, key=f"bold{suffix}")
+    with st.expander("외부 폰트 추가"):
+        up_font = st.file_uploader("폰트 파일 (.ttf, .otf)", type=['ttf', 'otf'], key=f"up_f{suffix}")
+    
+    t_color = st.color_picker("텍스트 색상", "#000000", key=f"t_c{suffix}")
+    f_size = st.slider("글자 크기", 10, 120, 30, key=f"f_s{suffix}")
+    with st.expander("📏 간격 세부 설정"):
+        x_s = st.slider("가로 간격", 1.0, 5.0, 2.5, key=f"x_s{suffix}")
+        y_s = st.slider("세로 간격", 1.0, 5.0, 2.0, key=f"y_s{suffix}")
+    
+    st.markdown("---")
+    st.info("5️⃣ **출처 텍스트 표기**")
+    show_moon1 = st.checkbox("제작자 표시 (Moon1)", value=False, key=f"s_m1{suffix}")
+    show_custom = st.checkbox("싫어요 내 이름 적을꺼야", value=False, key=f"s_c{suffix}")
+    custom_text = ""
+    if show_custom:
+        custom_text = st.text_input("적고 싶은 문구 입력", value="내 이름", key=f"c_txt{suffix}")
+    wm_color = st.color_picker("하단 글자 색상", "#000000", key=f"wm_c{suffix}")
+    
+    st.markdown("---")
+    st.info("6️⃣ **초기화**")
+    # 💡 새로운 리셋 함수 호출
+    if st.button("모두 기본값으로", key="reset_btn"):
+        reset_all()
+        st.rerun()
+
+    st.caption("🚀 최종 수정: 2026.03.15.04.26")
+
+# 결과 생성
+final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color, bg_img, bg_rotate, bg_x, bg_y, bg_zoom, t_color, f_size, x_s, y_s, lang, font_f, up_font, is_bold, use_holidays, show_box, bx_c, bx_o, bx_r, show_moon1, show_custom, custom_text, wm_color)
+
+st.markdown("### 미리보기")
+st.image(final_img, width=450)
+buf = io.BytesIO()
+final_img.save(buf, format="PNG")
+st.download_button("📥 이미지 파일로 저장", buf.getvalue(), f"calendar_{year}_{month}.png")
