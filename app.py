@@ -50,7 +50,7 @@ def get_calendar_data(year, month, lang, use_holidays):
 
 # --- 생성 함수 ---
 def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color, bg_image, 
-                       text_color_hex, font_size, lang, font_family, uploaded_font, is_bold,
+                       text_color_hex, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold,
                        use_holidays, show_box, box_color_hex, box_opacity, box_radius,
                        show_watermark):
     
@@ -70,8 +70,9 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
     text_color = ImageColor.getrgb(text_color_hex)
     red_color = (220, 20, 60, 255)
     
-    col_width = font_size * 2.8
-    row_height = font_size * 2.2
+    # 💡 글자 크기와 무관하게 사용자가 간격 비율을 직접 조절하도록 변경
+    col_width = font_size * x_spacing
+    row_height = font_size * y_spacing
     cal_width = col_width * 7
     cal_height = row_height * (len(weeks) + 2.5)
     
@@ -104,7 +105,6 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
                 color = red_color if (col_idx == 0 or is_h) else text_color
                 draw.text((x, y), str(day), fill=color, font=reg_font, anchor="mm")
 
-    # 2. 제작자 마크 (Moon1) - 항상 볼드체로 설정
     if show_watermark:
         small_bold_font = get_font(font_family, uploaded_font, 20, lang, force_bold=True)
         draw.text((width - 30, height - 30), "Moon1", fill=text_color, font=small_bold_font, anchor="rd")
@@ -113,7 +113,9 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
 
 # --- UI 레이아웃 ---
 st.set_page_config(page_title="달력 배경화면 생성기", layout="wide")
-st.title("📅 달력 배경화면 생성기")
+
+# 💡 상단 제목 크기 수정 (기존 st.title 대신 html <h2> 태그 사용으로 크기 축소 및 줄바꿈 방지)
+st.markdown("<h2 style='margin-top: 0px;'>📅 달력 배경화면 생성기</h2>", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("1. 기기 규격 설정")
@@ -146,7 +148,11 @@ with st.sidebar:
     is_bold = st.checkbox("볼드체 설정", value=False)
     uploaded_font = st.file_uploader("외부 폰트 추가 (.ttf, .otf)", type=['ttf', 'otf'])
     text_color = st.color_picker("텍스트 색상", "#000000")
-    font_size = st.slider("글자 크기", 10, 80, 25)
+    
+    # 💡 글자 크기 기본값 상향 및 가로/세로 간격 슬라이더 추가
+    font_size = st.slider("글자 크기", 10, 120, 40)
+    x_spacing = st.slider("가로 간격 (격자 넓이)", 1.0, 5.0, 2.5, step=0.1)
+    y_spacing = st.slider("세로 간격 (격자 높이)", 1.0, 5.0, 2.0, step=0.1)
 
     st.header("4. 배경 설정")
     bg_type = st.radio("배경", ["단색 컬러", "이미지 업로드"], horizontal=True, index=0)
@@ -158,7 +164,6 @@ with st.sidebar:
         bg_image = None
     
     st.markdown("---")
-    # 1. 명칭 변경: 가독성 박스 추가(이미지 배경 시)
     show_box = st.checkbox("가독성 박스 추가(이미지 배경 시)", value=False)
     box_color = st.color_picker("바탕 색상", "#FFFFFF")
     box_opacity = st.slider("바탕 투명도", 0, 100, 100)
@@ -169,11 +174,11 @@ with st.sidebar:
 
 # 결과 생성
 final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color, bg_image, 
-                               text_color, font_size, lang, font_family, uploaded_font, is_bold,
+                               text_color, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold,
                                use_holidays, show_box, box_color, box_opacity, box_radius,
                                show_watermark)
 
-st.subheader("미리보기")
+st.markdown("### 미리보기")
 buf = io.BytesIO()
 final_img.save(buf, format="PNG")
 st.image(buf.getvalue(), width=400)
