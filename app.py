@@ -5,15 +5,18 @@ from datetime import datetime, date
 import io
 import os
 import holidays
+import urllib.request # 💡 인터넷에서 폰트를 다운받기 위한 도구 추가
 
 # --- 폰트 및 데이터 설정 ---
 def get_font(font_option, uploaded_font, size, lang, force_bold=False):
+    # 1. 사용자가 직접 올린 폰트가 있다면 최우선 적용
     if uploaded_font is not None:
         try:
             return ImageFont.truetype(io.BytesIO(uploaded_font.getvalue()), size)
         except:
             st.error("폰트 파일을 읽을 수 없습니다.")
     
+    # 한국어일 때 Arial 깨짐 방지
     actual_font = font_option
     if lang == "한국어" and font_option == "Arial":
         actual_font = "맑은 고딕"
@@ -29,9 +32,26 @@ def get_font(font_option, uploaded_font, size, lang, force_bold=False):
     if force_bold:
         font_file = font_file.replace(".ttf", "bd.ttf").replace(".ttc", "bd.ttc")
     
+    # 2. 로컬(내 컴퓨터) 윈도우 환경일 경우
     path = os.path.join("C:\\Windows\\Fonts", font_file)
     if os.path.exists(path):
         return ImageFont.truetype(path, size)
+    
+    # 3. 💡 클라우드(인터넷) 환경일 경우: 크기 조절이 가능한 나눔고딕 자동 다운로드 적용
+    cloud_font_name = "NanumGothicBold.ttf" if force_bold else "NanumGothicRegular.ttf"
+    
+    if not os.path.exists(cloud_font_name):
+        try:
+            # 구글 서버에서 폰트 파일 실시간 가져오기
+            url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Bold.ttf" if force_bold else "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+            urllib.request.urlretrieve(url, cloud_font_name)
+        except:
+            pass
+            
+    if os.path.exists(cloud_font_name):
+        return ImageFont.truetype(cloud_font_name, size)
+        
+    # 만약 모든게 실패하면 비상용 폰트 사용
     return ImageFont.load_default()
 
 def get_calendar_data(year, month, lang, use_holidays):
@@ -70,7 +90,6 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
     text_color = ImageColor.getrgb(text_color_hex)
     red_color = (220, 20, 60, 255)
     
-    # 💡 글자 크기와 무관하게 사용자가 간격 비율을 직접 조절하도록 변경
     col_width = font_size * x_spacing
     row_height = font_size * y_spacing
     cal_width = col_width * 7
@@ -114,72 +133,9 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
 # --- UI 레이아웃 ---
 st.set_page_config(page_title="달력 배경화면 생성기", layout="wide")
 
-# 💡 상단 제목 크기 수정 (기존 st.title 대신 html <h2> 태그 사용으로 크기 축소 및 줄바꿈 방지)
 st.markdown("<h2 style='margin-top: 0px;'>📅 달력 배경화면 생성기</h2>", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("1. 기기 규격 설정")
     category = st.selectbox("기기 분류", 
-                            ["스마트폰 (1080x2340)", "태블릿 (2048x2732)", "이북 리더기 (758x1024)", "직접 입력"],
-                            index=2)
-    
-    res_map = {
-        "스마트폰 (1080x2340)": (1080, 2340),
-        "태블릿 (2048x2732)": (2048, 2732),
-        "이북 리더기 (758x1024)": (758, 1024)
-    }
-    
-    if category == "직접 입력":
-        w, h = st.number_input("가로", value=1080), st.number_input("세로", value=1920)
-    else:
-        w, h = res_map[category]
-
-    st.header("2. 날짜 및 위치")
-    c1, c2 = st.columns(2)
-    year, month = c1.number_input("년", value=2026), c2.number_input("월", 1, 12, 3)
-    is_landscape = st.checkbox("🔄 가로로 돌리기 (가로 모드)", value=False)
-    if is_landscape: w, h = h, w
-    use_holidays = st.checkbox("대한민국 공휴일 반영", value=True)
-    pos_val = st.slider("세로 위치 (%)", 0, 100, 50)
-
-    st.header("3. 달력 디자인")
-    lang = st.radio("언어", ["English", "한국어"], horizontal=True)
-    font_family = st.selectbox("서체", ["Arial", "맑은 고딕", "바탕체", "나눔고딕"], index=0)
-    is_bold = st.checkbox("볼드체 설정", value=False)
-    uploaded_font = st.file_uploader("외부 폰트 추가 (.ttf, .otf)", type=['ttf', 'otf'])
-    text_color = st.color_picker("텍스트 색상", "#000000")
-    
-    # 💡 글자 크기 기본값 상향 및 가로/세로 간격 슬라이더 추가
-    font_size = st.slider("글자 크기", 10, 120, 40)
-    x_spacing = st.slider("가로 간격 (격자 넓이)", 1.0, 5.0, 2.5, step=0.1)
-    y_spacing = st.slider("세로 간격 (격자 높이)", 1.0, 5.0, 2.0, step=0.1)
-
-    st.header("4. 배경 설정")
-    bg_type = st.radio("배경", ["단색 컬러", "이미지 업로드"], horizontal=True, index=0)
-    if bg_type == "이미지 업로드":
-        bg_image = st.file_uploader("이미지 업로드", type=['jpg', 'png', 'jpeg'])
-        bg_color = "#FFFFFF"
-    else:
-        bg_color = st.color_picker("배경색 선택", "#FFFFFF")
-        bg_image = None
-    
-    st.markdown("---")
-    show_box = st.checkbox("가독성 박스 추가(이미지 배경 시)", value=False)
-    box_color = st.color_picker("바탕 색상", "#FFFFFF")
-    box_opacity = st.slider("바탕 투명도", 0, 100, 100)
-    box_radius = st.slider("바탕 모서리 곡률", 0, 100, 20)
-
-    st.header("5. 제작자 출처 표기")
-    show_watermark = st.checkbox("Moon1 마크 표시 (우측 하단)", value=False)
-
-# 결과 생성
-final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color, bg_image, 
-                               text_color, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold,
-                               use_holidays, show_box, box_color, box_opacity, box_radius,
-                               show_watermark)
-
-st.markdown("### 미리보기")
-buf = io.BytesIO()
-final_img.save(buf, format="PNG")
-st.image(buf.getvalue(), width=400)
-st.download_button("📥 이미지 파일로 저장", buf.getvalue(), f"calendar_{year}_{month}.png")
+                            ["스마트폰 (1080x2340)", "태블릿 (2048x2732)", "이북 리더기 (758x1024)", "
