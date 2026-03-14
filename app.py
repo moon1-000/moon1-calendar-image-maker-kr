@@ -7,7 +7,7 @@ import os
 import holidays
 import urllib.request
 
-# --- 폰트 자동 다운로드 로직 ---
+# --- 폰트 및 데이터 로직 ---
 def get_font(font_option, uploaded_font, size, lang, force_bold=False):
     if uploaded_font is not None:
         try:
@@ -42,6 +42,30 @@ def get_calendar_data(year, month, lang, use_holidays):
         m_n, hds = calendar.month_name[month].upper(), ["S", "M", "T", "W", "T", "F", "S"]
     return m_n, hds, weeks, kr_h
 
+# --- 컬러 프리셋 헬퍼 함수 💡 ---
+def color_selector(label, key_prefix, default_color):
+    st.write(f"**{label}**")
+    # 파스텔 톤 6가지 + 검정 + 흰색
+    presets = {
+        "⚪": "#FFFFFF", "⚫": "#000000", 
+        "🌸": "#FFB7B2", "🍊": "#FFDAC1", "🍋": "#E2F0CB", 
+        "🌿": "#B5EAD7", "🍇": "#C7CEEA", "🧊": "#AEC6CF"
+    }
+    
+    # 세션 상태 초기화
+    state_key = f"{key_prefix}_color_val"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = default_color
+
+    # 프리셋 버튼 배치
+    cols = st.columns(8)
+    for i, (icon, hex_val) in enumerate(presets.items()):
+        if cols[i].button(icon, key=f"{key_prefix}_{i}"):
+            st.session_state[state_key] = hex_val
+    
+    return st.color_picker(f"{label} 상세 선택", st.session_state[state_key], key=f"{key_prefix}_picker")
+
+# --- 메인 생성 함수 ---
 def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color, bg_image, bg_rotate, bg_x, bg_y, text_color_hex, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold, use_holidays, show_box, box_color_hex, box_opacity, box_radius, show_watermark):
     if bg_type == "이미지 업로드" and bg_image is not None:
         img = Image.open(bg_image).convert("RGBA")
@@ -90,8 +114,8 @@ st.markdown("<h2 style='margin-top: 0px;'>📅 달력 배경화면 생성기</h2
 with st.sidebar:
     st.markdown("---")
     st.header("1️⃣ 기기 규격 설정")
-    category_list = ["스마트폰 (1080x2340)", "태블릿 (2048x2732)", "이북 리더기 (758x1024)", "직접 입력"]
-    category = st.selectbox("기기 분류", category_list, index=2)
+    cat_list = ["스마트폰 (1080x2340)", "태블릿 (2048x2732)", "이북 리더기 (758x1024)", "직접 입력"]
+    category = st.selectbox("기기 분류", cat_list, index=2)
     res_map = {"스마트폰 (1080x2340)": (1080, 2340), "태블릿 (2048x2732)": (2048, 2732), "이북 리더기 (758x1024)": (758, 1024)}
     w, h = (st.number_input("가로", value=1080), st.number_input("세로", value=1920)) if category == "직접 입력" else res_map[category]
     
@@ -107,10 +131,18 @@ with st.sidebar:
     st.header("3️⃣ 달력 디자인")
     lang = st.radio("언어", ["English", "한국어"], horizontal=True)
     font_f = st.selectbox("서체", ["Arial", "맑은 고딕", "바탕체", "나눔고딕"], index=0)
-    is_bold, t_color = st.checkbox("볼드체 설정", value=False), st.color_picker("텍스트 색상", "#000000")
+    is_bold = st.checkbox("볼드체 설정", value=False)
     up_font = st.file_uploader("외부 폰트 추가", type=['ttf', 'otf'])
-    f_size = st.slider("글자 크기", 10, 120, 40)
-    x_s, y_s = st.slider("가로 간격", 1.0, 5.0, 2.5), st.slider("세로 간격", 1.0, 5.0, 2.0)
+    
+    # 💡 컬러 프리셋 적용
+    t_color = color_selector("텍스트 색상", "text", "#000000")
+    
+    f_size = st.slider("글자 크기", 10, 120, 30) # 💡 기본값 30
+    
+    # 💡 간격 슬라이더 한 묶음으로 숨기기
+    with st.expander("📏 간격 세부 설정"):
+        x_s = st.slider("가로 간격", 1.0, 5.0, 2.5)
+        y_s = st.slider("세로 간격", 1.0, 5.0, 2.0)
     
     st.markdown("---")
     st.header("4️⃣ 배경 설정")
@@ -118,32 +150,34 @@ with st.sidebar:
     bg_rotate, bg_x, bg_y, bg_img, bg_color = 0, 0, 0, None, "#FFFFFF"
     
     if bg_type == "이미지 업로드":
-        # 💡 슬라이더를 업로드 버튼보다 위로 배치하여 가시성 확보
-        st.write("🖼️ **이미지 조작 (회전 및 위치)**")
+        bg_img = st.file_uploader("이미지 파일 선택", type=['jpg', 'png', 'jpeg']) # 💡 파일 선택이 위로
+        st.write("🖼️ **이미지 조작**")
         bg_rotate = st.slider("이미지 회전 (도)", 0, 360, 0, 90)
         bg_x = st.slider("이미지 가로 이동 (%)", -100, 100, 0)
         bg_y = st.slider("이미지 세로 이동 (%)", -100, 100, 0)
-        bg_img = st.file_uploader("이미지 파일 선택", type=['jpg', 'png', 'jpeg'])
     else:
-        bg_color = st.color_picker("배경색 선택", "#FFFFFF")
+        bg_color = color_selector("배경색 선택", "bg", "#FFFFFF") # 💡 컬러 프리셋 적용
     
     st.markdown("---")
-    st.write("🕶️ **박스 설정**")
+    # 💡 문구 제거 및 가독성 박스 설정
     show_box = st.checkbox("가독성 박스 추가(이미지 배경 시)", value=False)
-    bx_c, bx_o, bx_r = st.color_picker("바탕 색상", "#FFFFFF"), st.slider("바탕 투명도", 0, 100, 100), st.slider("바탕 모서리 곡률", 0, 100, 20)
+    if show_box:
+        bx_c = color_selector("바탕 박스 색상", "box", "#FFFFFF") # 💡 컬러 프리셋 적용
+        bx_o = st.slider("바탕 투명도", 0, 100, 75) # 💡 기본값 75
+        bx_r = st.slider("바탕 모서리 곡률", 0, 100, 20)
+    else:
+        bx_c, bx_o, bx_r = "#FFFFFF", 75, 20
     
     st.markdown("---")
     st.header("5️⃣ 제작자 출처 표기")
     show_wm = st.checkbox("Moon1 마크 표시", value=False)
     
-    # 💡 최종 버전 정보 표기
     st.markdown("---")
-    st.caption("🚀 최종 개발자 수정시각: 2026.03.15.03.25")
+    st.caption("🚀 최종 개발자 수정시각: 2026.03.15.03.35")
 
 # 결과 생성
-final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color, bg_img, bg_rotate, bg_x, bg_y, t_color, f_size, x_s, y_s, lang, font_f, up_font, is_bold, use_holidays, show_box, bx_c, bx_o, bx_r, show_wm)
-st.markdown("### 미리보기")
-st.image(final_img, width=400)
+final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color if bg_type=="단색 컬러" else "#FFFFFF", bg_img, bg_rotate, bg_x, bg_y, t_color, f_size, x_s, y_s, lang, font_f, up_font, is_bold, use_holidays, show_box, bx_c, bx_o, bx_r, show_wm)
+st.image(final_img, use_container_width=False, width=400)
 buf = io.BytesIO()
 final_img.save(buf, format="PNG")
 st.download_button("📥 이미지 파일로 저장", buf.getvalue(), f"calendar_{year}_{month}.png")
