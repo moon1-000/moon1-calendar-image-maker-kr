@@ -153,7 +153,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.info("6️⃣ **초기화**")
-    if st.button("🔄 모두 기본값으로"):
+    if st.button("모두 기본값으로"):
         for key in st.session_state.keys(): del st.session_state[key]
         st.rerun()
 
