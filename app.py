@@ -122,7 +122,6 @@ with st.sidebar:
     else: 
         bg_color = st.color_picker("배경색 선택", "#FFFFFF")
     
-    st.write("🖼️ **박스 설정**")
     show_box = st.checkbox("가독성 박스 추가(이미지 배경 시)", value=False)
     if show_box:
         bx_c = st.color_picker("바탕 박스 색상", "#FFFFFF")
