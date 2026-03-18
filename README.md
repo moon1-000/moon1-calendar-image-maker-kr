@@ -9,4 +9,4 @@ moon1/calendar-image-maker-kr
 
 https://moon1-calendar-image-maker-kr-n6qv69nmdsrorxkbkkbnaa.streamlit.app/
 
-혹시 위 링크에서 Zzz..가 뜬다면 하단의 파랑 박스 Yes, get this app back up!을 누르시면 작동합니다.
+혹시 위 링크에서 Zzz..가 뜬다면 하단의 Yes, get this app back up!을 클릭하시면 작동합니다.
