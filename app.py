@@ -35,7 +35,7 @@ def get_calendar_data(year, month, lang, use_holidays):
     return m_n, hds, weeks, kr_h
 
 # --- 생성 함수 ---
-def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color, bg_image, bg_rotate, bg_x, bg_y, bg_zoom, text_color_hex, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold, use_holidays, show_box, box_color_hex, box_opacity, box_radius, show_moon1, show_custom, custom_text, wm_color):
+def generate_wallpaper(width, height, year, month, h_pos_ratio, v_pos_ratio, bg_type, bg_color, bg_image, bg_rotate, bg_x, bg_y, bg_zoom, text_color_hex, font_size, x_spacing, y_spacing, lang, font_family, uploaded_font, is_bold, use_holidays, show_box, box_color_hex, box_opacity, box_radius, show_moon1, show_custom, custom_text, wm_color):
     base_color = ImageColor.getrgb(bg_color)
     img_canvas = Image.new('RGBA', (width, height), color=base_color)
 
@@ -61,13 +61,17 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
     t_c, r_c = ImageColor.getrgb(text_color_hex), (220, 20, 60, 255)
     c_w, r_h = font_size * x_spacing, font_size * y_spacing
     cal_w, cal_h = c_w * 7, r_h * (len(wks) + 2.5)
-    s_x, s_y = (width - cal_w) / 2, (height * (pos_ratio / 100)) - (cal_h / 2)
+    
+    # 위치 계산 로직 수정 (가로 위치 반영) 💡
+    s_x = (width * (h_pos_ratio / 100)) - (cal_w / 2)
+    s_y = (height * (v_pos_ratio / 100)) - (cal_h / 2)
     
     if show_box:
         bc = ImageColor.getrgb(box_color_hex)
         draw.rounded_rectangle([s_x - 40, s_y - 40, s_x + cal_w + 40, s_y + cal_h + 40], radius=box_radius, fill=(bc[0], bc[1], bc[2], int(255 * (box_opacity/100))))
     
-    draw.text((width/2, s_y + r_h/2), m_n, fill=t_c, font=b_f, anchor="mm")
+    # 타이틀 중앙 정렬 (s_x 기준)
+    draw.text((s_x + (cal_w / 2), s_y + r_h/2), m_n, fill=t_c, font=b_f, anchor="mm")
     h_y = s_y + (r_h * 2)
     for i, h in enumerate(hds):
         draw.text((s_x + (i * c_w) + (c_w/2), h_y), h, fill=r_c if i == 0 else t_c, font=r_f, anchor="mm")
@@ -91,18 +95,15 @@ def generate_wallpaper(width, height, year, month, pos_ratio, bg_type, bg_color,
 # --- UI 레이아웃 ---
 st.set_page_config(page_title="달력 배경화면 생성기", layout="wide")
 
-# 💡 리셋 카운터 초기화
 if "reset_key" not in st.session_state:
     st.session_state.reset_key = 0
 
 def reset_all():
     st.session_state.reset_key += 1
-    # 세션에 저장된 커스텀 컬러 등도 삭제
     for key in list(st.session_state.keys()):
         if key != "reset_key":
             del st.session_state[key]
 
-# 고유 접미사 (리셋될 때마다 바뀜)
 suffix = f"_{st.session_state.reset_key}"
 
 st.markdown("<h2 style='font-size: 1.8rem; text-align: center; margin-top: 0px;'>📅 달력 배경화면 생성기</h2>", unsafe_allow_html=True)
@@ -128,7 +129,13 @@ with st.sidebar:
     is_landscape = st.checkbox("가로로 돌리기", value=False, key=f"land{suffix}")
     if is_landscape: w, h = h, w
     use_holidays = st.checkbox("대한민국 공휴일 반영", value=True, key=f"hol{suffix}")
-    pos_val = st.slider("세로 위치 (%)", 0, 100, 50, key=f"pos{suffix}")
+    
+    # 💡 텍스트 설정에서 옮겨온 달력 크기 설정
+    cal_size = st.slider("달력 크기 설정", 10, 120, 30, key=f"cal_s{suffix}")
+    
+    # 💡 가로/세로 위치 설정
+    h_pos_val = st.slider("달력 가로 위치 설정 (%)", 0, 100, 50, key=f"h_pos{suffix}")
+    v_pos_val = st.slider("달력 세로 위치 설정 (%)", 0, 100, 50, key=f"v_pos{suffix}")
     
     st.markdown("---")
     st.info("3️⃣ **배경 설정**")
@@ -163,7 +170,7 @@ with st.sidebar:
         up_font = st.file_uploader("폰트 파일 (.ttf, .otf)", type=['ttf', 'otf'], key=f"up_f{suffix}")
     
     t_color = st.color_picker("텍스트 색상", "#000000", key=f"t_c{suffix}")
-    f_size = st.slider("글자 크기", 10, 120, 30, key=f"f_s{suffix}")
+    
     with st.expander("📏 간격 세부 설정"):
         x_s = st.slider("가로 간격", 1.0, 5.0, 2.5, key=f"x_s{suffix}")
         y_s = st.slider("세로 간격", 1.0, 5.0, 2.0, key=f"y_s{suffix}")
@@ -179,15 +186,14 @@ with st.sidebar:
     
     st.markdown("---")
     st.info("6️⃣ **초기화**")
-    # 💡 새로운 리셋 함수 호출
     if st.button("모두 기본값으로", key="reset_btn"):
         reset_all()
         st.rerun()
 
-    st.caption("🚀 최종 수정: 2026.03.15.04.26")
+    st.caption("🚀 최종 수정: 2026.03.15.04.40")
 
 # 결과 생성
-final_img = generate_wallpaper(w, h, year, month, pos_val, bg_type, bg_color, bg_img, bg_rotate, bg_x, bg_y, bg_zoom, t_color, f_size, x_s, y_s, lang, font_f, up_font, is_bold, use_holidays, show_box, bx_c, bx_o, bx_r, show_moon1, show_custom, custom_text, wm_color)
+final_img = generate_wallpaper(w, h, year, month, h_pos_val, v_pos_val, bg_type, bg_color, bg_img, bg_rotate, bg_x, bg_y, bg_zoom, t_color, cal_size, x_s, y_s, lang, font_f, up_font, is_bold, use_holidays, show_box, bx_c, bx_o, bx_r, show_moon1, show_custom, custom_text, wm_color)
 
 st.markdown("### 미리보기")
 st.image(final_img, width=450)
