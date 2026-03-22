@@ -1,4 +1,4 @@
-moon1/calendar-image-maker-kr
+calendar-image-maker-kr
 달력 배경화면 생성기입니다.
 
 배경 색상, 이미지, 글자 폰트, 한국 공휴일 반영 여부 등 설정이 가능합니다.
